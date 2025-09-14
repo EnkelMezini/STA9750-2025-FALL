@@ -1,0 +1,12 @@
+---
+title: "Enkel Mezini"
+---
+
+Highly analytical and detail-oriented graduate student pursuing a Master’s in Business Analytics at Baruch College, with a focus in Data Analytics. Proficient in SQL, Python, and Excel, with hands-on experience in data analysis, data visualization, and AI. Extensive experience in cinematography and media production, including short-form social media content, YouTube, instructional videos, and podcasts.
+
+```{r}
+#| include: false
+1+1
+```
+--------------
+Last Updated: `r format(Sys.time(), "%A %m %d, %Y at %H:%M%p")`
