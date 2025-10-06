@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Enkel Mezini – STA 9750 Submission Material</title>
+<title>MP01 – STA 9750 Submission Material</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -96,7 +96,7 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Enkel Mezini</h1>
+<h1 class="title">MP01</h1>
 </div>
 
 
@@ -113,11 +113,45 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>Highly analytical and detail-oriented graduate student pursuing a Master’s in Business Analytics at Baruch College, with a focus in Data Analytics. Proficient in SQL, Python, and Excel, with hands-on experience in data analysis, data visualization, and AI. Extensive experience in cinematography and media production, including short-form social media content, YouTube, instructional videos, and podcasts.</p>
-<hr>
-<p>Last Updated: Sunday 09 14, 2025 at 16:53PM</p>
+<p>###Dowload Datasets if(!dir.exists(file.path(“data”, “mp01”))){ dir.create(file.path(“data”, “mp01”), showWarnings=FALSE, recursive=TRUE) }</p>
+<p>GLOBAL_TOP_10_FILENAME &lt;- file.path(“data”, “mp01”, “global_top10_alltime.csv”)</p>
+<p>if(!file.exists(GLOBAL_TOP_10_FILENAME)){ download.file(“https://www.netflix.com/tudum/top10/data/all-weeks-global.tsv”, destfile=GLOBAL_TOP_10_FILENAME) }</p>
+<p>COUNTRY_TOP_10_FILENAME &lt;- file.path(“data”, “mp01”, “country_top10_alltime.csv”)</p>
+<p>if(!file.exists(COUNTRY_TOP_10_FILENAME)){ download.file(“https://www.netflix.com/tudum/top10/data/all-weeks-countries.tsv”, destfile=COUNTRY_TOP_10_FILENAME) }</p>
+<section id="import-datases-into-r" class="level3">
+<h3 class="anchored" data-anchor-id="import-datases-into-r">Import Datases Into R</h3>
+<p>if(!require(“tidyverse”)) install.packages(“tidyverse”) library(readr) library(dplyr)</p>
+<p>GLOBAL_TOP_10 &lt;- read_tsv(GLOBAL_TOP_10_FILENAME)</p>
+<p>str(GLOBAL_TOP_10)</p>
+<p>glimpse(GLOBAL_TOP_10)</p>
+</section>
+<section id="clean-data" class="level3">
+<h3 class="anchored" data-anchor-id="clean-data">Clean Data</h3>
+<section id="global-top-10" class="level4">
+<h4 class="anchored" data-anchor-id="global-top-10">Global Top 10</h4>
+<p>GLOBAL_TOP_10 &lt;- GLOBAL_TOP_10 |&gt; mutate(season_title = if_else(season_title == “N/A”, NA_character_, season_title))</p>
+<p>glimpse(GLOBAL_TOP_10)</p>
+</section>
+<section id="country-top-10" class="level4">
+<h4 class="anchored" data-anchor-id="country-top-10">Country Top 10</h4>
+<p>COUNTRY_TOP_10 &lt;- read_tsv(COUNTRY_TOP_10_FILENAME) glimpse(COUNTRY_TOP_10)</p>
+<p>COUNTRY_TOP_10 &lt;- COUNTRY_TOP_10 |&gt; mutate(season_title = if_else(season_title == “N/A”, NA_character_, season_title)) glimpse(COUNTRY_TOP_10)</p>
+</section>
+</section>
+<section id="eda" class="level3">
+<h3 class="anchored" data-anchor-id="eda">EDA</h3>
+<p>install.packages(“DT”)</p>
+<p>library(DT) GLOBAL_TOP_10 |&gt; head(n=20) |&gt; datatable(options=list(searching=FALSE, info=FALSE))</p>
+<p>library(stringr) format_titles &lt;- function(df){ colnames(df) &lt;- str_replace_all(colnames(df), “_“,” “) |&gt; str_to_title() df }</p>
+<p>GLOBAL_TOP_10 |&gt; mutate(<code>runtime_(minutes)</code> = round(60 * runtime)) |&gt; select(-season_title, -runtime) |&gt; format_titles() |&gt; head(n=20) |&gt; datatable(options=list(searching=FALSE, info=FALSE)) |&gt; formatRound(c(‘Weekly Hours Viewed’, ‘Weekly Views’))</p>
+<p>COUNTRY_TOP_10 |&gt; format_titles() |&gt; head(n=20) |&gt; datatable(options=list(searching=FALSE, info=FALSE)) |&gt;</p>
+<p>glimpse(COUNTRY_TOP_10)</p>
+</section>
+<section id="section" class="level3">
+<h3 class="anchored" data-anchor-id="section">1.</h3>
 
 
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
