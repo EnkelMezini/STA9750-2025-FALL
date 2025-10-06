@@ -1,0 +1,709 @@
+---
+title: "MP01"
+---
+
+<!-- ###Dowload Datasets -->
+<!-- if(!dir.exists(file.path("data", "mp01"))){ -->
+<!--     dir.create(file.path("data", "mp01"), showWarnings=FALSE, recursive=TRUE) -->
+<!-- } -->
+
+<!-- GLOBAL_TOP_10_FILENAME <- file.path("data", "mp01", "global_top10_alltime.csv") -->
+
+<!-- if(!file.exists(GLOBAL_TOP_10_FILENAME)){ -->
+<!--     download.file("https://www.netflix.com/tudum/top10/data/all-weeks-global.tsv",  -->
+<!--                   destfile=GLOBAL_TOP_10_FILENAME) -->
+<!-- } -->
+
+<!-- COUNTRY_TOP_10_FILENAME <- file.path("data", "mp01", "country_top10_alltime.csv") -->
+
+<!-- if(!file.exists(COUNTRY_TOP_10_FILENAME)){ -->
+<!--     download.file("https://www.netflix.com/tudum/top10/data/all-weeks-countries.tsv",  -->
+<!--                   destfile=COUNTRY_TOP_10_FILENAME) -->
+<!-- } -->
+
+<!-- ### Import Datases Into R -->
+
+<!-- if(!require("tidyverse")) install.packages("tidyverse") -->
+<!-- library(readr) -->
+<!-- library(dplyr) -->
+
+<!-- GLOBAL_TOP_10 <- read_tsv(GLOBAL_TOP_10_FILENAME) -->
+
+<!-- str(GLOBAL_TOP_10) -->
+
+<!-- glimpse(GLOBAL_TOP_10) -->
+
+<!-- ### Clean Data  -->
+<!-- #### Global Top 10 -->
+
+<!-- GLOBAL_TOP_10 <- GLOBAL_TOP_10 |> -->
+<!--     mutate(season_title = if_else(season_title == "N/A", NA_character_, season_title)) -->
+
+<!-- glimpse(GLOBAL_TOP_10) -->
+
+<!-- #### Country Top 10 -->
+<!-- COUNTRY_TOP_10 <- read_tsv(COUNTRY_TOP_10_FILENAME) -->
+<!-- glimpse(COUNTRY_TOP_10) -->
+
+<!-- COUNTRY_TOP_10 <- COUNTRY_TOP_10 |> -->
+<!--     mutate(season_title = if_else(season_title == "N/A", NA_character_, season_title)) -->
+<!-- glimpse(COUNTRY_TOP_10) -->
+
+<!-- ### EDA  -->
+
+<!-- install.packages("DT") -->
+
+<!-- library(DT) -->
+<!-- GLOBAL_TOP_10 |>  -->
+<!--     head(n=20) |> -->
+<!--     datatable(options=list(searching=FALSE, info=FALSE)) -->
+
+<!-- library(stringr) -->
+<!-- format_titles <- function(df){ -->
+<!--     colnames(df) <- str_replace_all(colnames(df), "_", " ") |> str_to_title() -->
+<!--     df -->
+<!-- } -->
+
+
+<!-- GLOBAL_TOP_10 |>  -->
+<!--     mutate(`runtime_(minutes)` = round(60 * runtime)) |> -->
+<!--     select(-season_title,  -->
+<!--            -runtime) |> -->
+<!--     format_titles() |> -->
+<!--     head(n=20) |> -->
+<!--     datatable(options=list(searching=FALSE, info=FALSE)) |> -->
+<!--     formatRound(c('Weekly Hours Viewed', 'Weekly Views')) -->
+
+<!-- COUNTRY_TOP_10 |>  -->
+<!--     format_titles() |> -->
+<!--     head(n=20) |> -->
+<!--     datatable(options=list(searching=FALSE, info=FALSE)) |> -->
+
+<!-- glimpse(COUNTRY_TOP_10)  -->
+
+
+## 1.
+
+```{r,message=FALSE}
+#| code-fold: true
+#| code-summary: "Show the code"
+library(dplyr)
+library(readr)
+COUNTRY_TOP_10_FILENAME <- file.path("data", "mp01", "country_top10_alltime.csv")
+COUNTRY_TOP_10 <- read_tsv(COUNTRY_TOP_10_FILENAME)
+
+
+N_Countries <- COUNTRY_TOP_10 %>%
+  summarise(num_countries = n_distinct(country_name)) %>%
+  pull(num_countries)
+```
+
+There are **`{r} N_Countries`** unique countries listed in the dataset.
+
+## 2.
+
+```{r, message=FALSE}
+#| code-fold: true
+#| code-summary: "Show the code"
+
+library(dplyr)
+library(readr)
+
+# import data
+if(!dir.exists(file.path("data", "mp01"))){
+    dir.create(file.path("data", "mp01"), showWarnings=FALSE, recursive=TRUE)
+}
+
+GLOBAL_TOP_10_FILENAME <- file.path("data", "mp01", "global_top10_alltime.csv")
+
+if(!file.exists(GLOBAL_TOP_10_FILENAME)){
+    download.file("https://www.netflix.com/tudum/top10/data/all-weeks-global.tsv", 
+                  destfile=GLOBAL_TOP_10_FILENAME)
+}
+
+GLOBAL_TOP_10 <- read_tsv(GLOBAL_TOP_10_FILENAME)
+
+# Process data for top non-english film
+non_english_films <- GLOBAL_TOP_10 %>%
+  filter(category == "Films (Non-English)")
+
+top_non_english_film <- non_english_films %>%
+  group_by(show_title) %>%
+  summarise(max_weeks = max(cumulative_weeks_in_top_10, na.rm = TRUE)) %>%
+  arrange(desc(max_weeks)) %>%
+  slice(1)
+
+film_name <- top_non_english_film$show_title
+film_weeks <- top_non_english_film$max_weeks
+```
+
+The non-English-language film that spent the most cumulative weeks in the global top 10 is **`r film_name`**, with **`r film_weeks` weeks**.
+
+## 3.
+
+```{r, message=FALSE}
+#| code-fold: true
+#| code-summary: "Show the code"
+
+library(dplyr)
+library(readr)
+
+# import data
+if(!dir.exists(file.path("data", "mp01"))){
+    dir.create(file.path("data", "mp01"), showWarnings=FALSE, recursive=TRUE)
+}
+
+GLOBAL_TOP_10_FILENAME <- file.path("data", "mp01", "global_top10_alltime.csv")
+
+if(!file.exists(GLOBAL_TOP_10_FILENAME)){
+    download.file("https://www.netflix.com/tudum/top10/data/all-weeks-global.tsv", 
+                  destfile=GLOBAL_TOP_10_FILENAME)
+}
+
+GLOBAL_TOP_10 <- read_tsv(GLOBAL_TOP_10_FILENAME)
+
+# Process question
+longest_film <- GLOBAL_TOP_10 %>%
+  filter(category %in% c("Films (English)", "Films (Non-English)")) %>%
+  filter(!is.na(runtime)) %>%
+  arrange(desc(runtime)) %>%
+  slice(1) %>%
+  mutate(runtime_minutes = round(runtime * 60))
+
+longest_film_title <- longest_film$show_title
+longest_film_minutes <- longest_film$runtime_minutes
+```
+
+The longest film to appear in the Netflix global Top 10 is **`r longest_film_title`**, with a runtime of **`r longest_film_minutes` minutes**.
+
+## 4.
+
+```{r, message=FALSE}
+#| code-fold: true
+#| code-summary: "Show the code"
+
+library(dplyr)
+library(readr)
+
+# import data
+if(!dir.exists(file.path("data", "mp01"))){
+    dir.create(file.path("data", "mp01"), showWarnings=FALSE, recursive=TRUE)
+}
+
+GLOBAL_TOP_10_FILENAME <- file.path("data", "mp01", "global_top10_alltime.csv")
+
+if(!file.exists(GLOBAL_TOP_10_FILENAME)){
+    download.file("https://www.netflix.com/tudum/top10/data/all-weeks-global.tsv", 
+                  destfile=GLOBAL_TOP_10_FILENAME)
+}
+
+GLOBAL_TOP_10 <- read_tsv(GLOBAL_TOP_10_FILENAME)
+
+# Process question
+
+top_by_category <- GLOBAL_TOP_10 %>%
+  group_by(category, show_title) %>%
+  summarise(total_hours = sum(weekly_hours_viewed, na.rm = TRUE), .groups = "drop") %>%
+  arrange(category, desc(total_hours)) %>%
+  group_by(category) %>%
+  slice(1)
+
+
+films_eng    <- top_by_category %>% filter(category == "Films (English)")
+films_noneng <- top_by_category %>% filter(category == "Films (Non-English)")
+tv_eng       <- top_by_category %>% filter(category == "TV (English)")
+tv_noneng    <- top_by_category %>% filter(category == "TV (Non-English)")
+
+f1_title <- films_eng$show_title
+f1_hours <- films_eng$total_hours
+
+f2_title <- films_noneng$show_title
+f2_hours <- films_noneng$total_hours
+
+t1_title <- tv_eng$show_title
+t1_hours <- tv_eng$total_hours
+
+t2_title <- tv_noneng$show_title
+t2_hours <- tv_noneng$total_hours
+```
+
+
+The most viewed **English film** is **`r f1_title`** with **`r format(f1_hours, big.mark = ",")`** total hours.
+
+The most viewed **Non-English film** is **`r f2_title`** with **`r format(f2_hours, big.mark = ",")`** total hours.
+
+The most viewed **English TV show** is **`r t1_title`** with **`r format(t1_hours, big.mark = ",")`** total hours.
+
+The most viewed **Non-English TV show** is **`r t2_title`** with **`r format(t2_hours, big.mark = ",")`** total hours
+
+## 5.
+
+```{r,message=FALSE}
+#| code-fold: true
+#| code-summary: "Show the code"
+library(dplyr)
+library(readr)
+
+COUNTRY_TOP_10_FILENAME <- file.path("data", "mp01", "country_top10_alltime.csv")
+
+if(!file.exists(COUNTRY_TOP_10_FILENAME)){
+    download.file("https://www.netflix.com/tudum/top10/data/all-weeks-countries.tsv", 
+                  destfile=COUNTRY_TOP_10_FILENAME)
+}
+
+COUNTRY_TOP_10 <- read_tsv(COUNTRY_TOP_10_FILENAME)
+
+
+
+longest_run_tv <- COUNTRY_TOP_10 %>%
+  filter(category %in% c("TV", "TV (English)", "TV (Non-English)")) %>%
+  filter(!is.na(cumulative_weeks_in_top_10)) %>%
+  arrange(desc(cumulative_weeks_in_top_10)) %>%
+  slice(1)
+
+tv_title <- longest_run_tv$show_title
+tv_weeks <- longest_run_tv$cumulative_weeks_in_top_10
+tv_country <- longest_run_tv$country_name
+```
+
+The TV show with the longest run in a country's Top 10 is **`r tv_title`**, which spent **`r tv_weeks` weeks** in the Top 10 in **`r tv_country`**.
+
+## 6.
+
+```{r,message=FALSE}
+#| code-fold: true
+#| code-summary: "Show the code"
+library(dplyr)
+library(readr)
+
+COUNTRY_TOP_10_FILENAME <- file.path("data", "mp01", "country_top10_alltime.csv")
+
+if(!file.exists(COUNTRY_TOP_10_FILENAME)){
+    download.file("https://www.netflix.com/tudum/top10/data/all-weeks-countries.tsv", 
+                  destfile=COUNTRY_TOP_10_FILENAME)
+}
+
+COUNTRY_TOP_10 <- read_tsv(COUNTRY_TOP_10_FILENAME)
+
+# Solve problem
+
+weeks_per_country <- COUNTRY_TOP_10 %>%
+  group_by(country_name) %>%
+  summarise(num_weeks = n_distinct(week),
+            last_week = max(week)) %>%
+  filter(num_weeks < 200)
+
+country_ceased <- weeks_per_country$country_name
+weeks_count <- weeks_per_country$num_weeks
+cease_date <- weeks_per_country$last_week
+```
+
+The country where Netflix provided fewer than 200 weeks of service history is **`r country_ceased`**, and Netflix ceased operations there in the week ending **`r cease_date`**.
+
+## 7.
+
+
+```{r, message=FALSE}
+#| code-fold: true
+#| code-summary: "Show the code"
+
+library(dplyr)
+library(readr)
+
+# import data
+if(!dir.exists(file.path("data", "mp01"))){
+    dir.create(file.path("data", "mp01"), showWarnings=FALSE, recursive=TRUE)
+}
+
+GLOBAL_TOP_10_FILENAME <- file.path("data", "mp01", "global_top10_alltime.csv")
+
+if(!file.exists(GLOBAL_TOP_10_FILENAME)){
+    download.file("https://www.netflix.com/tudum/top10/data/all-weeks-global.tsv", 
+                  destfile=GLOBAL_TOP_10_FILENAME)
+}
+
+GLOBAL_TOP_10 <- read_tsv(GLOBAL_TOP_10_FILENAME)
+
+# Process question
+
+total_squid_game_hours <- GLOBAL_TOP_10 %>%
+  filter(show_title == "Squid Game") %>%
+  summarise(total_hours = sum(weekly_hours_viewed, na.rm = TRUE)) %>%
+  pull(total_hours)
+```
+
+The total viewership of the TV show *Squid Game* across all three seasons is **`r format(total_squid_game_hours, big.mark = ",")`** hours.
+
+## 8.
+```{r, message=FALSE}
+#| code-fold: true
+#| code-summary: "Show the code"
+
+library(dplyr)
+library(readr)
+library(lubridate)
+
+# import data
+if(!dir.exists(file.path("data", "mp01"))){
+    dir.create(file.path("data", "mp01"), showWarnings=FALSE, recursive=TRUE)
+}
+
+GLOBAL_TOP_10_FILENAME <- file.path("data", "mp01", "global_top10_alltime.csv")
+
+if(!file.exists(GLOBAL_TOP_10_FILENAME)){
+    download.file("https://www.netflix.com/tudum/top10/data/all-weeks-global.tsv", 
+                  destfile=GLOBAL_TOP_10_FILENAME)
+}
+
+GLOBAL_TOP_10 <- read_tsv(GLOBAL_TOP_10_FILENAME)
+
+# process question
+
+runtime_hours <- 1 + 58/60
+
+red_notice_views_2021 <- GLOBAL_TOP_10 %>%
+  filter(show_title == "Red Notice", year(week) == 2021) %>%
+  summarise(total_hours = sum(weekly_hours_viewed, na.rm = TRUE)) %>%
+  mutate(approx_views = total_hours / runtime_hours) %>%
+  pull(approx_views)
+```
+
+The movie *Red Notice* received approximately **`r format(round(red_notice_views_2021), big.mark = ",")`** views in 2021.
+
+## 9.
+```{r,message=FALSE}
+#| code-fold: true
+#| code-summary: "Show the code"
+library(dplyr)
+library(readr)
+
+COUNTRY_TOP_10_FILENAME <- file.path("data", "mp01", "country_top10_alltime.csv")
+
+if(!file.exists(COUNTRY_TOP_10_FILENAME)){
+    download.file("https://www.netflix.com/tudum/top10/data/all-weeks-countries.tsv", 
+                  destfile=COUNTRY_TOP_10_FILENAME)
+}
+
+COUNTRY_TOP_10 <- read_tsv(COUNTRY_TOP_10_FILENAME)
+
+GLOBAL_TOP_10_FILENAME <- file.path("data", "mp01", "global_top10_alltime.csv")
+
+if(!file.exists(GLOBAL_TOP_10_FILENAME)){
+    download.file("https://www.netflix.com/tudum/top10/data/all-weeks-global.tsv", 
+                  destfile=GLOBAL_TOP_10_FILENAME)
+}
+
+GLOBAL_TOP_10 <- read_tsv(GLOBAL_TOP_10_FILENAME)
+
+# answer question
+
+us_films <- COUNTRY_TOP_10 %>%
+  filter(country_iso2 == "US", category == "Films")
+
+films_ranks <- us_films %>%
+  group_by(show_title) %>%
+  summarise(
+    debut_week = min(week),
+    debut_rank = weekly_rank[which.min(week)],
+    reached_no1 = any(weekly_rank == 1),
+    last_week = max(week),
+    .groups = "drop"
+  ) %>%
+  filter(reached_no1 == TRUE, debut_rank != 1) %>%
+  arrange(desc(last_week))
+
+num_films <- nrow(films_ranks)
+most_recent_film <- films_ranks$show_title[1]
+most_recent_date <- films_ranks$last_week[1]
+```
+
+There are `r num_films` films that reached Number 1 in the US but did not debut at Number 1. The most recent film to do this was **`r most_recent_film`**, which achieved this in the week ending `r most_recent_date`.
+
+## 10.
+
+```{r, message=FALSE}
+#| code-fold: true
+#| code-summary: "Show the code"
+
+library(dplyr)
+library(readr)
+
+# import data
+if(!dir.exists(file.path("data", "mp01"))){
+    dir.create(file.path("data", "mp01"), showWarnings=FALSE, recursive=TRUE)
+}
+
+GLOBAL_TOP_10_FILENAME <- file.path("data", "mp01", "global_top10_alltime.csv")
+
+if(!file.exists(GLOBAL_TOP_10_FILENAME)){
+    download.file("https://www.netflix.com/tudum/top10/data/all-weeks-global.tsv", 
+                  destfile=GLOBAL_TOP_10_FILENAME)
+}
+
+GLOBAL_TOP_10 <- read_tsv(GLOBAL_TOP_10_FILENAME)
+
+# answer question
+
+tv_shows <- COUNTRY_TOP_10 %>%
+  filter(grepl("TV", category, ignore.case = TRUE))
+
+
+debut_weeks <- tv_shows %>%
+  group_by(show_title, season_title) %>%
+  summarise(debut_week = min(week), .groups = "drop")
+
+
+countries_per_debut <- tv_shows %>%
+  inner_join(debut_weeks, by = c("show_title", "season_title")) %>%
+  filter(week == debut_week) %>%
+  group_by(show_title, season_title) %>%
+  summarise(num_countries = n_distinct(country_iso2), .groups = "drop")
+
+
+top_show <- countries_per_debut %>%
+  arrange(desc(num_countries)) %>%
+  slice(1)
+
+top_show_title <- top_show$show_title
+top_season_title <- top_show$season_title
+top_num_countries <- top_show$num_countries
+```
+
+The TV show/season that hit the Top 10 in the most countries during its debut week is **`r top_show_title`**, charting in **`r top_num_countries`** countries.
+
+```{r,message=FALSE}
+#| code-fold: true
+#| code-summary: "Show the code"
+library(dplyr)
+library(readr)
+
+COUNTRY_TOP_10_FILENAME <- file.path("data", "mp01", "country_top10_alltime.csv")
+
+if(!file.exists(COUNTRY_TOP_10_FILENAME)){
+    download.file("https://www.netflix.com/tudum/top10/data/all-weeks-countries.tsv", 
+                  destfile=COUNTRY_TOP_10_FILENAME)
+}
+
+COUNTRY_TOP_10 <- read_tsv(COUNTRY_TOP_10_FILENAME)
+
+GLOBAL_TOP_10_FILENAME <- file.path("data", "mp01", "global_top10_alltime.csv")
+
+if(!file.exists(GLOBAL_TOP_10_FILENAME)){
+    download.file("https://www.netflix.com/tudum/top10/data/all-weeks-global.tsv", 
+                  destfile=GLOBAL_TOP_10_FILENAME)
+}
+
+GLOBAL_TOP_10 <- read_tsv(GLOBAL_TOP_10_FILENAME)
+
+# stats for news
+
+st_global <- GLOBAL_TOP_10 %>%
+  filter(show_title == "Stranger Things")
+
+
+st_global_summary <- st_global %>%
+  summarise(
+    total_hours = sum(weekly_hours_viewed, na.rm = TRUE),
+    total_weeks = n_distinct(week),
+    first_appearance = min(week),
+    last_appearance = max(week),
+    top_rank = min(weekly_rank),
+    seasons = n_distinct(season_title)
+  )
+
+
+st_country <- COUNTRY_TOP_10 %>%
+  filter(show_title == "Stranger Things")
+
+
+st_country_summary <- st_country %>%
+  summarise(
+    total_countries = n_distinct(country_name),
+    total_country_weeks = n()
+  )
+
+
+total_hours <- st_global_summary$total_hours
+total_weeks <- st_global_summary$total_weeks
+top_rank <- st_global_summary$top_rank
+total_countries <- st_country_summary$total_countries
+
+```
+
+# READ ALL ABOUT IT
+
+## **“Goodbye, Farewell and Amen”**
+### Is Stranger Things poised to be the highest-rated finale of all time?
+
+In the late 20th century, the final episode of the TV show M\*A\*S\*H drew in more than 100 million viewers. With the premiere of the final season of Stranger Things upon us, is this 42-year-old record about to be broken?
+
+It's difficult to say, due to the fundamental changes in how episodic programming is viewed today. But one thing is certain — Stranger Things has been watched for a total of `r format(total_hours, big.mark = ",")` hours and has spent `r total_weeks` weeks on Netflix’s Global Top 10 charts.
+
+Those are massive numbers! A hit show in `r total_countries` countries — wow! Could this be the greatest series finale of all time?
+
+Well, stranger things have happened.
+
+```{r,message=FALSE}
+#| code-fold: true
+#| code-summary: "Show the code"
+library(dplyr)
+library(readr)
+
+COUNTRY_TOP_10_FILENAME <- file.path("data", "mp01", "country_top10_alltime.csv")
+
+if(!file.exists(COUNTRY_TOP_10_FILENAME)){
+    download.file("https://www.netflix.com/tudum/top10/data/all-weeks-countries.tsv", 
+                  destfile=COUNTRY_TOP_10_FILENAME)
+}
+
+COUNTRY_TOP_10 <- read_tsv(COUNTRY_TOP_10_FILENAME)
+
+GLOBAL_TOP_10_FILENAME <- file.path("data", "mp01", "global_top10_alltime.csv")
+
+if(!file.exists(GLOBAL_TOP_10_FILENAME)){
+    download.file("https://www.netflix.com/tudum/top10/data/all-weeks-global.tsv", 
+                  destfile=GLOBAL_TOP_10_FILENAME)
+}
+
+GLOBAL_TOP_10 <- read_tsv(GLOBAL_TOP_10_FILENAME)
+
+# get stats
+
+
+india_top <- COUNTRY_TOP_10 %>% filter(country_name == "India")
+us_top <- COUNTRY_TOP_10 %>% filter(country_name == "United States")
+
+
+india_only_titles <- india_top %>%
+  filter(!(show_title %in% us_top$show_title)) %>%
+  distinct(show_title)
+
+
+
+india_viewership <- india_top %>%
+  left_join(GLOBAL_TOP_10, by = c("show_title", "week"),relationship =
+  "many-to-many") %>%
+  filter(!is.na(weekly_hours_viewed))
+
+
+total_india_hours <- sum(india_viewership$weekly_hours_viewed, na.rm = TRUE)
+
+
+top_india_only <- india_viewership %>%
+  filter(show_title %in% india_only_titles$show_title) %>%
+  group_by(show_title) %>%
+  summarise(
+    total_hours = sum(weekly_hours_viewed, na.rm = TRUE),
+    weeks_in_top_10 = n()
+  ) %>%
+  arrange(desc(total_hours)) %>%
+  slice_head(n = 5)
+
+india_growth <- india_viewership %>%
+  group_by(year = year(week)) %>%
+  summarise(total_hours = sum(weekly_hours_viewed, na.rm = TRUE))
+```
+
+
+## Satyameva Jayate
+### Its true: India is at the top of the charts!
+
+As the most populous country in the world, **India** represents a critical growth opportunity for Netflix. Over the past few years, the platform has experienced tremendous success in India with over **`r format(round(total_india_hours / 1e6, 1), big.mark = ",")` million hours** of viewing time in the country.
+
+Netflix shows like `r top_india_only$show_title[1]`, `r top_india_only$show_title[2]`, and `r top_india_only$show_title[3]` are the talk of the town. Some of the over `r nrow(india_only_titles)` shows popular with Indian audiences. 
+
+Year-over-year trends suggest increasing engagement: for example, in `r india_growth$year[1]`, total viewing hours were only **`r india_growth$total_hours[1] ` million**, compared to **`r india_growth$total_hours[nrow(india_growth)]` million** in `r india_growth$year[nrow(india_growth)]` so far.
+
+With a growing catalog of local content and rising popularity across the country, Netflix is well-positioned for long-term success in the Indian market
+
+```{r, message=FALSE}
+#| code-fold: true
+#| code-summary: "Show the code"
+
+library(dplyr)
+library(readr)
+library(stringr)
+
+COUNTRY_TOP_10_FILENAME <- file.path("data", "mp01", "country_top10_alltime.csv")
+
+if(!file.exists(COUNTRY_TOP_10_FILENAME)){
+    download.file("https://www.netflix.com/tudum/top10/data/all-weeks-countries.tsv", 
+                  destfile=COUNTRY_TOP_10_FILENAME)
+}
+
+COUNTRY_TOP_10 <- read_tsv(COUNTRY_TOP_10_FILENAME)
+
+GLOBAL_TOP_10_FILENAME <- file.path("data", "mp01", "global_top10_alltime.csv")
+
+if(!file.exists(GLOBAL_TOP_10_FILENAME)){
+    download.file("https://www.netflix.com/tudum/top10/data/all-weeks-global.tsv", 
+                  destfile=GLOBAL_TOP_10_FILENAME)
+}
+
+GLOBAL_TOP_10 <- read_tsv(GLOBAL_TOP_10_FILENAME)
+
+ 
+# Filter for summer 2025 films
+summer_2025_films <- GLOBAL_TOP_10 %>%
+  filter(
+    str_detect(category, "Films"),
+    year(week) == 2025,
+    month(week) %in% 6:8  # June–August
+  )
+
+# Top 5 overall films
+top_summer_films <- summer_2025_films %>%
+  group_by(show_title) %>%
+  summarise(
+    total_hours = sum(weekly_hours_viewed, na.rm = TRUE),
+    total_weeks = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total_hours)) %>%
+  slice_head(n = 5)
+
+# Inline values for top film
+top_film <- top_summer_films$show_title[1]
+top_hours <- top_summer_films$total_hours[1]
+
+# Filter non-English films
+summer_non_english <- summer_2025_films %>%
+  filter(!str_detect(category, "Films (Non-English)"))
+
+# Top 5 non-English films
+top_summer_non_english <- summer_non_english %>%
+  group_by(show_title) %>%
+  summarise(
+    total_hours = sum(weekly_hours_viewed, na.rm = TRUE),
+    total_weeks = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total_hours)) %>%
+  slice_head(n = 5)
+```
+
+## Summer Block Busters!
+### Netflix and Netflix Some More
+
+The place to  be this  summer is inside, with the air conditioner  blasting watching Netflix movies. 
+
+We asked the most average person what they watched this summer and here is  what  they  said:
+
+“My favorite flavor is vanilla, you see, and that’s what’s great about me. I’m average. In the center of the herd is where it’s safest, nothing can hurt you there. Being so average means I like the things everyone else likes. So my top picks are the top picks! These were my favorite movies this summer!”
+
+
+At the top of the charts was `r top_film`, which racked up an impressive `r format(top_hours, big.mark = ",")` hours of views among all Netflix users.
+
+The other four movies 
+
+`r top_summer_films$show_title[2]` — `r format(top_summer_films$total_hours[2], big.mark = ",")` hours
+
+`r top_summer_films$show_title[3]` — `r format(top_summer_films$total_hours[3], big.mark = ",")` hours
+
+`r top_summer_films$show_title[4]` — `r format(top_summer_films$total_hours[4], big.mark = ",")` hours
+
+`r top_summer_films$show_title[5]` — `r format(top_summer_films$total_hours[5], big.mark = ",")` hours
+
+All right. Reserve your seat on the couch, because statistically speaking, these are the movies you’ll probably enjoy.
+
+Bye-bye now!
