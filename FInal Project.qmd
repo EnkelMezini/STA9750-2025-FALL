@@ -1,0 +1,164 @@
+---
+title: "Final Project"
+author: "Enkel Mezini"
+---
+## Introduction
+
+Adult obesity in the United States represents a multifaceted public health crisis that is as much a product of biological aging as it is a consequence of geographic environment. While national prevalence statistics offer a monolithic view of the epidemic, they frequently obscure the significant heterogeneity that exists in how obesity risk accumulates across the life course within specific state boundaries. This report investigates the "age-obesity gradient" by examining the correlation between age cohorts and obesity prevalence across the contiguous United States, utilizing longitudinal survey data from the CDC’s Behavioral Risk Factor Surveillance System (BRFSS). By applying a dual-methodological framework—leveraging spatiotemporal heatmaps to visualize cohort shifts and Spearman Rank Correlation coefficients to quantify the strength of these relationships—this analysis identifies the critical life stages where obesity risk accelerates and highlights the geographic outliers that deviate from the national norm. Ultimately, this inquiry provides the necessary empirical foundation to move beyond generalized health messaging toward targeted, state-specific interventions that address the diverse trajectories of obesity throughout the American lifespan.
+
+## Data: Import and Preparation
+
+```{r,message=FALSE,warning=FALSE,results='hide'}
+#| code-fold: true
+#| code-summary: "Show the code"
+#| 
+# 1. Load the readr library 
+library(readr)
+
+# 2.read_csv() to download the data
+cdc_data_tidy <- read_csv("https://data.cdc.gov/api/views/hn4x-zwk7/rows.csv?accessType=DOWNLOAD")
+
+
+str(cdc_data_tidy)
+
+library(tidyverse)
+
+# -------------------------------------------------------------------------
+# 1. Data Preparation 
+# -------------------------------------------------------------------------
+age_data <- cdc_data_tidy %>%
+  filter(Question == "Percent of adults aged 18 years and older who have obesity",
+         StratificationCategory1 == "Age (years)",
+         !is.na(Data_Value),
+         LocationDesc != "National") %>% # Good practice to remove National aggregate
+  select(LocationDesc, AgeGroup = `Age(years)`, Data_Value)
+
+# Define ordered age levels
+age_levels <- c("18 - 24", "25 - 34", "35 - 44", "45 - 54", "55 - 64", "65 or older")
+
+# Filter and order the data
+age_data_processed <- age_data %>%
+  filter(AgeGroup %in% age_levels) %>%
+  mutate(AgeGroup = factor(AgeGroup, levels = age_levels, ordered = TRUE),
+         AgeNumeric = as.numeric(AgeGroup))
+
+```
+
+
+## Methodology: Heatmaps and Non-Parametric Correlation
+
+The analytical framework for this report rests on two pillars: exploratory visualization and non-parametric correlation. The first tool, a spatiotemporal heatmap, is employed to resolve the "information density" problem. With 50 states and six age categories, a standard line graph would result in an uninterpretable "spaghetti plot." The heatmap, by contrast, utilizes color intensity to reveal the broad contours of the epidemic. It allows us to observe "cohort effects" across the entire United States simultaneously, providing a visual proof of the age-obesity gradient.
+
+The second tool is the Spearman Rank Correlation coefficient (r). Unlike the Pearson correlation, which assumes a linear relationship between continuous variables, the Spearman correlation is designed for ordinal data. Since our age data is binned into groups (e.g., 18–24, 25–34), we treat these as ranks. The Spearman coefficient measures the monotonic relationship between these ranks and the obesity percentage. A coefficient of +1.0 would indicate that as we move from one age group to the next, the obesity rate increases without exception. A coefficient of 0.0 would indicate no relationship, while a negative coefficient would suggest that obesity decreases as the population ages.Methodology: Heatmaps and Non-Parametric Correlation
+
+
+
+rs=1−(6∑d)/n(n2−1)
+
+
+## Analysis Part I: Mapping the Lifecycle
+
+The heatmap below serves as the foundational visualization for our inquiry. By aligning states on the vertical axis and age cohorts on the horizontal axis, we can observe the literal "lightening" of the American population as it ages.
+
+
+```{r,message=FALSE,warning=FALSE}
+#| code-fold: true
+#| code-summary: "Show the code"
+library(tidyverse)
+
+# -------------------------------------------------------------------------
+# Slide 1: Heatmap with Smaller Y-Axis Labels
+# -------------------------------------------------------------------------
+slide1_plot <- ggplot(age_data_processed, aes(x = AgeGroup, y = LocationDesc, fill = Data_Value)) +
+  geom_tile(color = "white") +
+  scale_fill_viridis_c(option = "magma", name = "Obesity %") +
+  theme_minimal(base_size = 10) +
+  labs(title = "Obesity Rate by Age Group Across U.S. States",
+       subtitle = "Prevalence generally increases up to middle age",
+       x = "Age Group",
+       y = "") + # Removed Y label "State" to save space
+  theme(
+    # HERE IS THE FIX: Size 4.5 font, with a little right margin padding
+    axis.text.y = element_text(size = 4.5, margin = margin(r = 2)),
+    axis.text.x = element_text(size = 8),
+    legend.position = "bottom", # Move legend to bottom to give more width to chart
+    panel.grid = element_blank()
+  )
+
+# Print to screen to check
+print(slide1_plot)
+
+
+ggsave("slide1_heatmap.png", slide1_plot, width = 8, height = 10, units = "in", dpi = 300)
+
+```
+
+The visual evidence provided by the heatmap is striking in its consistency. In the 18–24 age group, the map is dominated by deep, dark hues, indicating that young adulthood is generally a period of lower obesity prevalence. However, as we move through the 25–34 and 35–44 cohorts, the colors shift aggressively toward the yellow and white ends of the spectrum. This "brightening" represents a significant climb in obesity rates across nearly every jurisdiction in the country. The most critical observation, however, occurs in the final column. In the 65-plus age group, the colors often darken slightly compared to the 55–64 cohort. This suggests that the relationship between age and obesity is not an infinite upward climb, but rather a curve that reaches its peak just before the onset of seniority.
+
+
+### Analysis Part II: Quantifying the Correlation
+
+To validate these visual patterns, we calculate the Spearman correlation for every state. This allows us to move from general observation to specific, quantifiable evidence of the age-obesity relationship.
+
+```{r,message=FALSE,warning=FALSE}
+#| code-fold: true
+#| code-summary: "Show the code"
+library(tidyverse)
+# -------------------------------------------------------------------------
+# Slide 2: Correlation Plot with Smaller Y-Axis Labels
+# -------------------------------------------------------------------------
+# Calculate Correlations
+state_correlations <- age_data_processed %>%
+  group_by(LocationDesc) %>%
+  summarize(Correlation = cor(AgeNumeric, Data_Value, method = "spearman")) %>%
+  arrange(desc(Correlation))
+
+slide2_plot <- ggplot(state_correlations, aes(x = reorder(LocationDesc, Correlation), y = Correlation)) +
+  geom_col(aes(fill = Correlation > 0)) +
+  coord_flip() +
+  scale_fill_manual(values = c("TRUE" = "#2E86C1", "FALSE" = "#C0392B"), guide = "none") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+  theme_minimal(base_size = 10) +
+  labs(title = "Correlation Between Age and Obesity Rate",
+       subtitle = "Spearman Rank Correlation (Positive = rate increases with age)",
+       x = "", # Removed X label "State" to save space
+       y = "Correlation Coefficient") +
+  theme(
+    
+    axis.text.y = element_text(size = 4.5, margin = margin(r = 2)),
+    panel.grid.major.y = element_blank() # Remove horizontal grid lines for cleaner look
+  )
+
+# Print to screen to check
+print(slide2_plot)
+
+
+```
+
+The resulting bar chart provides an empirical answer to our research question: Yes, obesity is positively correlated with age in the United States. Every single state, with the notable exception of Hawaii and certain territories, exhibits a strong positive correlation. States such as Massachusetts, Minnesota, and New Hampshire show coefficients nearing 1.0, suggesting a near-perfect monotonic relationship where each successive age group is more obese than the last. Hawaii’s position as an outlier is particularly instructive. It suggests that the "inevitability" of age-related weight gain can be mitigated by geographic or cultural factors, providing a potential blueprint for other states to follow.
+
+### Integration: Connecting to Overall Project
+
+My analysis of the age-obesity correlation serves as the "connective tissue" that binds the individual research of my teammates into a coherent story. While I have established that obesity generally increases with age, my teammates have explored the specific "deviations" and "mechanisms" of this trend. For example, Benjamin Kuang’s analysis of vulnerable groups identifies the 45–54 age range as the most prone to obesity. My correlation data supports this by showing that the "velocity" of weight gain is highest just before this peak. If we look at my heatmap, the most drastic color shift often occurs between the 25–34 and 45–54 cohorts, validating Benjamin’s conclusion that middle age is the primary window of vulnerability.
+
+This correlation work also provides a deeper layer of meaning to Tenchi Chen’s "Threshold Analysis." Tenchi investigated at what age obesity becomes "common" (exceeding 35%). My Spearman analysis explains why some states hit this threshold so much earlier than others. States with a correlation coefficient of nearly 1.0 (like Massachusetts) tend to have a very predictable, slow-burn increase. However, in states with slightly lower correlations but higher baseline obesity, the "threshold" is crossed almost immediately in young adulthood. This suggests that while age is a correlate, the starting point (the intercept) of that correlation is determined by the geographic factors explored in Chris Chan's regional clustering analysis.
+
+Furthermore, my findings help contextualize the "weird" trends identified by Siya. Siya noted that Florida exhibits a "zig-zag" pattern over time, while West Virginia remains stable but high. My correlation analysis reveals that West Virginia has a very high, consistent age-obesity gradient. In contrast, Florida’s volatility in Siya’s temporal analysis might be explained by its unique demographic shifts—specifically, the influx of retirees. Because my analysis shows a "darkening" or reduction in obesity in the 65-plus cohort, Florida's overall obesity rate is constantly being "tugged" downward by its senior population, creating the measurement noise Siya observed.
+
+Finally, this analysis complements Ryan Ram’s work on the "Slope of Obesity." Ryan asked how sharply obesity increases with age. While my Spearman correlation measures the reliability of the increase, Ryan’s work measures the magnitude. Together, our work shows that not only is the increase in obesity almost guaranteed as a person ages in the U.S., but in many states, that increase is incredibly steep. By combining our findings, our team can conclude that the American obesity crisis is a two-front war: one against the environmental factors that determine the starting obesity rate for young adults, and another against the biological and social factors that ensure that rate climbs steadily until retirement.
+
+### Discussion: Physiological and Social Drivers
+
+The consistent peak in obesity between the ages of 55 and 64, followed by a decline in the 65-plus cohort, requires a nuanced interpretation. Physiologically, middle age is characterized by a significant drop in basal metabolic rate (BMR) and a decrease in lean muscle mass (sarcopenia). Without a corresponding decrease in caloric intake or an increase in resistance training, weight gain is a biological probability. Socially, the 35–64 window often represents the peak of professional and familial stress, leading to sedentary "desk-bound" behaviors and a reliance on convenience-based, calorie-dense foods.
+
+The decline observed in the senior cohort (65+) is likely the result of "survival bias." Individuals with class III obesity and associated comorbidities (Type 2 diabetes, heart failure) are statistically less likely to survive into their late 70s and 80s. Therefore, the population measured in the final cohort is often a "healthier" subset of their original generation. Additionally, elderly populations often face different nutritional challenges, such as reduced appetite or difficulty in food preparation, which can lead to weight loss that is not necessarily indicative of improved health.
+
+### Limitations and Future Research
+
+As with all survey-based research, this analysis is limited by the nature of self-reported data. The BRFSS relies on individuals to accurately report their height and weight; social desirability bias often leads participants to overreport height and underreport weight, meaning the true obesity gradient is likely even steeper than what is presented here. Furthermore, this study is cross-sectional. We are comparing different groups of people at a single point in time. A true longitudinal study—tracking the same individuals from age 18 to 80—would be necessary to definitively separate "aging effects" from "cohort effects" (the unique cultural experiences of specific generations).
+
+Future research should incorporate socioeconomic covariates, such as education level and median income, into the correlation model. It is highly probable that the "Hawaii Exception" found in this report is driven by a combination of a higher-than-average cost of fresh produce, a culture centered on outdoor maritime activity, and a different ethnic composition. By adding these layers to the Spearman model, we could identify exactly which "levers" policymakers can pull to flatten the age-obesity gradient in high-correlation states like Minnesota or Massachusetts.
+
+### Conclusion: The Path Forward
+
+This individual report has demonstrated that while the obesity crisis is vast, it is also highly predictable. The positive correlation between age and obesity is a near-universal feature of life in the United States, with risk accumulating aggressively through middle age before plateauing in seniority. However, the geographic variance—specifically the outliers like Hawaii—proves that this trajectory is not an immutable law of nature. By integrating these findings with the work of my teammates, our project has created a multidimensional map of the epidemic. We now know that to solve obesity, we cannot simply look at the "now"; we must look at the "next," intervening in the critical windows of young adulthood and middle age before the positive correlation of aging takes its full toll.
