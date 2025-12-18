@@ -78,18 +78,17 @@ slide1_plot <- ggplot(age_data_processed, aes(x = AgeGroup, y = LocationDesc, fi
        x = "Age Group",
        y = "") + # Removed Y label "State" to save space
   theme(
-    # HERE IS THE FIX: Size 4.5 font, with a little right margin padding
+ 
     axis.text.y = element_text(size = 4.5, margin = margin(r = 2)),
     axis.text.x = element_text(size = 8),
     legend.position = "bottom", # Move legend to bottom to give more width to chart
     panel.grid = element_blank()
   )
 
-# Print to screen to check
+
 print(slide1_plot)
 
 
-ggsave("slide1_heatmap.png", slide1_plot, width = 8, height = 10, units = "in", dpi = 300)
 
 ```
 
